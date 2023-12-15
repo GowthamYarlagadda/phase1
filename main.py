@@ -1,14 +1,7 @@
 import streamlit as st
-import openai
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ChatMessageHistory
 from langchain import PromptTemplate
-
-# Set your OpenAI API key
-openai.api_key = "YOUR_OPENAI_API_KEY"
-
-# Initialize ChatOpenAI model
-llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-0613")
 
 # Initialize ChatMessageHistory
 history = ChatMessageHistory()
@@ -30,7 +23,8 @@ Question: {question}
 Answer:
 """
 
-prompt = PromptTemplate(template=basic_prompt, input_variables=["question"])
+# Set up the initial model
+llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-0613")
 
 # Streamlit app
 def main():
@@ -41,7 +35,8 @@ def main():
 
     # Check if API key is provided
     if openai_api_key:
-        openai.api_key = openai_api_key
+        # Initialize ChatOpenAI model with the provided API key
+        llm = ChatOpenAI(api_key=openai_api_key, temperature=0, model="gpt-3.5-turbo-0613")
 
         # Get user input
         user_input = st.text_input("User Input:", "")
