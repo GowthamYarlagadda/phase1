@@ -4,19 +4,12 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ChatMessageHistory, ConversationBufferMemory
-import re
 
-# Function to get the OpenAI API key from the user input
-def get_openai_api_key():
-    api_key = st.text_input("Enter your OpenAI API key:", type="password")
-    return api_key
+# Function to initialize the ChatOpenAI model with the provided API key
+def initialize_chat_model(api_key):
+    return ChatOpenAI(temperature=0, model="gpt-3.5-turbo-0613", api_key=api_key)
 
-# Function to set the OpenAI API key as an environment variable
-def set_openai_api_key(api_key):
-    os.environ["OPENAI_API_KEY"] = api_key
-
-llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-0613")
-
+# Function to initialize the LLMChain with the provided model and memory
 basic_prompt = """
 Role: Compassionate therapist maintaining warmth and empathy. Respond with shorter responses.
 Instructions:
@@ -39,52 +32,58 @@ Maintain empathy and connection for a supportive environment.
 Question: {question}
 Answer:
 """
+    prompt = PromptTemplate(template=basic_prompt, input_variables=["question"])
+    memory = ConversationBufferMemory(llm=model, chat_memory=history, memory_key="history")
+    return LLMChain(prompt=prompt, llm=model, memory=memory)
 
-prompt = PromptTemplate(template=basic_prompt, input_variables=["question"])
-history = ChatMessageHistory()
-memory = ConversationBufferMemory(llm=llm, chat_memory=history, memory_key="history")
-llm_chain = LLMChain(prompt=prompt, llm=llm, memory=memory)
-
+# Function to trim input string
 def trim(input_str):
     input_str = re.sub(r'\([^]+)\*', '', input_str)
     question_index = input_str.find('Question:')
+    
     if question_index == -1:
         return input_str.strip()
+
     trimmed_str = input_str[:question_index].strip()
     return trimmed_str
 
-def add_to_history(user_input, model_output):
+# Function to add user input and model output to history
+def add_to_history(user_input, model_output, history):
     history.add_user_message(user_input)
     history.add_ai_message(model_output)
 
-def run_model(message, history):
+# Function to run the model
+def run_model(message, llm_chain, history):
     if message.lower() == 'bye':
         history.clear()
         return None
     else:
         model_output = llm_chain.run(message)
+        add_to_history(message, trim(model_output), history)
         return trim(model_output)
 
+# Streamlit App
 def main():
-    st.title("Chatbot with Streamlit")
+    st.title("Chatbot with OpenAI")
 
     # Get OpenAI API key from user input
-    api_key = get_openai_api_key()
+    api_key = st.text_input("Enter your OpenAI API key:", type="password")
 
-    if api_key:
-        # Set OpenAI API key as environment variable
-        set_openai_api_key(api_key)
-        st.write("You've entered the OpenAI API key.")
+    if st.button("Initialize Chatbot"):
+        if api_key:
+            st.success("Chatbot Initialized!")
+            model = initialize_chat_model(api_key)
+            history = ChatMessageHistory()
+            llm_chain = initialize_llm_chain(model, history)
 
-        user_input = st.text_input("You:", "")
+            # Chat interface
+            user_input = st.text_input("You:", "")
+            if st.button("Send"):
+                if user_input:
+                    response = run_model(user_input, llm_chain, history)
+                    st.text_area("Chatbot:", value=response, height=100)
 
-        if st.button("Send"):
-            st.write("Bot:", run_model(user_input, history))
-
-        if st.button("Clear History"):
-            history.clear()
-    else:
-        st.warning("Please enter your OpenAI API key.")
+    st.warning("Remember to keep your API key secure and do not share it publicly.")
 
 if __name__ == "__main__":
     main()
