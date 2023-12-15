@@ -1,9 +1,19 @@
+import os
 import streamlit as st
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ChatMessageHistory, ConversationBufferMemory
 import re
+
+# Function to get the OpenAI API key from the user input
+def get_openai_api_key():
+    api_key = st.text_input("Enter your OpenAI API key:", type="password")
+    return api_key
+
+# Function to set the OpenAI API key as an environment variable
+def set_openai_api_key(api_key):
+    os.environ["OPENAI_API_KEY"] = api_key
 
 llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-0613")
 
@@ -35,7 +45,6 @@ history = ChatMessageHistory()
 memory = ConversationBufferMemory(llm=llm, chat_memory=history, memory_key="history")
 llm_chain = LLMChain(prompt=prompt, llm=llm, memory=memory)
 
-
 def trim(input_str):
     input_str = re.sub(r'\([^]+)\*', '', input_str)
     question_index = input_str.find('Question:')
@@ -44,11 +53,9 @@ def trim(input_str):
     trimmed_str = input_str[:question_index].strip()
     return trimmed_str
 
-
 def add_to_history(user_input, model_output):
     history.add_user_message(user_input)
     history.add_ai_message(model_output)
-
 
 def run_model(message, history):
     if message.lower() == 'bye':
@@ -58,14 +65,17 @@ def run_model(message, history):
         model_output = llm_chain.run(message)
         return trim(model_output)
 
-
 def main():
     st.title("Chatbot with Streamlit")
 
-    api_key = st.text_input("Enter your OpenAI API key:", type="password")
+    # Get OpenAI API key from user input
+    api_key = get_openai_api_key()
 
     if api_key:
+        # Set OpenAI API key as environment variable
+        set_openai_api_key(api_key)
         st.write("You've entered the OpenAI API key.")
+
         user_input = st.text_input("You:", "")
 
         if st.button("Send"):
@@ -75,7 +85,6 @@ def main():
             history.clear()
     else:
         st.warning("Please enter your OpenAI API key.")
-
 
 if __name__ == "__main__":
     main()
